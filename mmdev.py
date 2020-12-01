@@ -10,13 +10,12 @@ from Dev.Classes.CommandMannager import *
 
 #token = "".join([f'{x.replace("\n", "")}.' for x in open("token.txt", "r")])            heeeeeeeere
 #print(token)
-print("Njg5NjE1Njc4MTUxMzI3NzUx.XnFcpg.hNNtk2rT2wDbfdw9W3dsPsdLXZA")
 base_url = "https://discordmmdev-4192.restdb.io/rest"
 headers = {
     'content-type': "application/json",
     'x-apikey': "a80deec3bdf880ed69e92e8dfe780301f2db6",
     'cache-control': "no-cache"
-    }
+}
 
 db = Restdb(base_url=base_url, headers=headers)
 client = commands.Bot(command_prefix = 'pls ', intents=Intents.all())
