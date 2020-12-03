@@ -29,7 +29,7 @@ class Restdb:
 
     def add_guild(self, id):
         if not self.get_guild(id, exist=True):
-            data = json.dumps({"id": id, "request": []})
+            data = json.dumps({"id": str(id), "request": [], "admins": {"roles": [], "members": []}, "language": "en"})
             res = rq.request("POST", f"{self.base_url}/guild", data=data, headers=self.headers)
             self.log(f"Guild {id} added." if res.ok else f"Something went wrong with adding guild {id}!", error=not res.ok)
             if res.ok:
@@ -44,7 +44,8 @@ class Restdb:
         if guild:
             _requests = kwargs["requests"] if "requests" in kwargs else self.get_requests(requests=guild["request"], out="_id")
             _roles = json.dumps(kwargs["admins"]) if "admins" in kwargs else guild["admins"]
-            data = json.dumps({"id": str(id), "request": _requests, "admins": _roles})
+            _language = kwargs["language"] if "language" in kwargs else guild["language"]
+            data = json.dumps({"id": str(id), "request": _requests, "admins": _roles, "language": _language})
             url = self.base_url+"/guild/"+guild["_id"]
             res = rq.request("PUT", url, data=data, headers=self.headers)
             self.log(f"Guild {id} updated with status {str(res).split()[1][:-1]}.", error=not res.ok)
@@ -95,7 +96,6 @@ class Restdb:
                 "message_id": kwargs["message_id"] if "message_id" in kwargs else request["message_id"],
                 "reaction": kwargs["reaction"] if "reaction" in kwargs else request["reaction"],
                 "goal": kwargs["goal"] if "goal" in kwargs else request["goal"],
-                "language": kwargs["language"] if "language" in kwargs else request["language"]
             }
             url = self.base_url+"/request/"+request["_id"]
             res = rq.request("PUT", url, data=json.dumps(_request), headers=self.headers)

@@ -1,8 +1,90 @@
+from discord import *
+import aiohttp
+from io import BytesIO
+
+
 class CommandMannager:
     client, db = None, None
+    lines = {"en": ["Language changed to english.", f"Language unknown."],
+             "pl": ["Zmiana języka na polski.", "Nieznany język."],
+             "cz": ["Jazyk změněn na češtinu.", "Neznámý jazyk."]}
+
+
     @staticmethod
     def init(_client, _db):
         CommandMannager.client, CommandMannager.db = _client, _db
+
+    async def autorized(self, ctx, **kwargs):
+        if "admins" in CommandMannager.db.get_guild(ctx.guild.id):
+            ad = CommandMannager.db.get_guild(ctx.guild.id)["admins"]
+            admins = []
+            [admins.extend(ad[x]) for x in ad]
+            for admin in admins:
+                if int(admin) in [x.id for x in ctx.author.roles] or int(admin) == ctx.author.id:
+                    CommandMannager.db.log("User autorized.")
+                    return True
+        if ctx.author.id == ctx.guild.owner_id:
+            return True
+        if not kwargs["logs"] if "logs" in kwargs else True:
+            await ctx.send(embed=Embed(title="You are not allowed to use this command!", color=Color.red()))
+        return False
+
+    async def send_url_image(self, **kwargs):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(kwargs["url"]) as resp:
+                buffer = BytesIO(await resp.read())
+
+        await kwargs["ctx"].send(file=File(buffer, filename=f"smth.{kwargs['end']}"))
+
+    async def update_request(self, payload, check_full):
+        channel, message = await DsClCon.get_message(message_id=str(payload.message_id),
+                                                     channel_id=str(payload.channel_id))
+        request = CommandMannager.db.get_request(by="message_id", value=str(message.id))
+        if request:
+            count = [x for x in [x.strip() for x in message.embeds[0].fields[1].name.partition("/")] if x != "/"]
+            if count[0] < count[1] or check_full:
+                await MmRequest.update(request=request)
+
+
+class DsClCon:
+    @staticmethod
+    async def get_message(**kwargs):
+        try:
+            chanel = await CommandMannager.client.fetch_channel(int(kwargs["channel_id"]))
+        except:
+            chanel = None
+        try:
+            message = await chanel.fetch_message(int(kwargs["message_id"]))
+        except:
+            message = None
+        return [chanel, message]
+
+    @staticmethod
+    async def get_user(ctx, member):
+        try:
+            if isinstance(member, str) and "!" in member:
+                user = await CommandMannager.client.fetch_user(member[3:-1])
+            elif isinstance(member, int):
+                user = await CommandMannager.client.fetch_user(member)
+            else:
+                user = None
+        except:
+            user = None
+        return user
+
+    @staticmethod
+    async def get_role(ctx, role):
+        try:
+            if isinstance(role, str) and "&" in role:
+                group = [x for x in await ctx.guild.fetch_roles() if x.id == int(role[3:-1])]
+            elif isinstance(role, int):
+                group = [x for x in await ctx.guild.fetch_roles() if x.id == role]
+            else:
+                group = None
+        except:
+            group = None
+        return group
+
 
 class MmRequest:
     lines = {
@@ -36,18 +118,6 @@ class MmRequest:
     }
 
     @staticmethod
-    async def get_message(**kwargs):
-        try:
-            chanel = await CommandMannager.client.fetch_channel(int(kwargs["channel_id"]))
-        except:
-            chanel = None
-        try:
-            message = await chanel.fetch_message(int(kwargs["message_id"]))
-        except:
-            message = None
-        return [chanel, message]
-
-    @staticmethod
     async def update(**kwargs):
         if "request" in kwargs:
             db_request = kwargs["request"]
@@ -55,7 +125,7 @@ class MmRequest:
             return -1
 
         added, users = [], []
-        channel, message = await MmRequest.get_message(message_id=str(db_request["message_id"]), channel_id=str(db_request["channel_id"]))
+        channel, message = await DsClCon.get_message(message_id=str(db_request["message_id"]), channel_id=str(db_request["channel_id"]))
 
         reaction = [x for x in message.reactions if x.emoji == db_request["reaction"]]
         if len(reaction) > 0:
